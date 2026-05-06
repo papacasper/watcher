@@ -1,0 +1,17 @@
+[Unit]
+Description=Watcher portfolio dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/dev/watcher
+Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+Environment=BUN_ENV=production
+ExecStartPre=%h/.bun/bin/bun run build
+ExecStart=%h/.bun/bin/bun --env-file=.env bin/server.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
