@@ -4,6 +4,8 @@ Watcher is a self-hosted Robinhood dividend-goal dashboard. It runs on your
 machine, stores credentials locally, and shows how close the portfolio is to a
 daily dividend income target.
 
+![Watcher dashboard showing portfolio stats and dividend income history](docs/assets/screenshot.png)
+
 ## Download And Run
 
 Download the binary for your OS, run it, then open:
