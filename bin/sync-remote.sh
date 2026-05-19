@@ -2,6 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Load defaults from .env.local if present (never committed — add to .gitignore)
+if [[ -f "$ROOT_DIR/.env.local" ]]; then
+  # shellcheck disable=SC1091
+  set -a; source "$ROOT_DIR/.env.local"; set +a
+fi
+
 REMOTE="${WATCHER_REMOTE:-}"
 REMOTE_DIR="${WATCHER_REMOTE_DIR:-}"
 SSH_OPTS=(-F /dev/null)
@@ -43,8 +50,7 @@ remote_build() {
 }
 
 remote_restart() {
-  ssh "${SSH_OPTS[@]}" "$REMOTE" \
-    "cd '$REMOTE_DIR' && set -a && . ./.env && set +a && curl --max-time 5 -fsS -u \"\${DASHBOARD_USER}:\${DASHBOARD_PASSWORD}\" -H 'x-watcher-action: 1' -X POST \"http://\${HOST}:\${PORT}/api/restart\" >/dev/null"
+  ssh "${SSH_OPTS[@]}" "$REMOTE" "systemctl --user restart watcher"
 }
 
 changed_paths_require_restart() {

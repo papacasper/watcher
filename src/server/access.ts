@@ -59,7 +59,7 @@ export function requireAccess(
   const denied = requireDashboardAuth(headers, config);
   if (denied) return denied;
 
-  if (stateChanging && headers["x-watcher-action"] !== config.stateChangeHeader) {
+  if (stateChanging && !safeEqual(headers["x-watcher-action"] ?? "", config.stateChangeHeader)) {
     return new Response("Missing action header", { status: 403, headers: DENY_HEADERS });
   }
 
