@@ -265,8 +265,9 @@ export class RobinhoodAuth {
     }
 
     if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`Robinhood login failed: ${resp.status} ${err}`);
+      const body = await resp.text().catch(() => "");
+      console.debug(`Robinhood login failed (${resp.status}):`, body.slice(0, 500));
+      throw new Error(`Robinhood login failed: ${resp.status}`);
     }
 
     const data = await resp.json() as {

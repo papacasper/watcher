@@ -1,4 +1,6 @@
+import { createHash, randomBytes } from "crypto";
 import type { DashboardAccessConfig } from "./server/access.js";
+import { loadConfig, saveConfig } from "./config-store.js";
 
 type Env = Record<string, string | undefined>;
 
@@ -57,11 +59,6 @@ export interface RobinhoodCredentialsConfig {
   mfaCode?: string;
 }
 
-export interface AlpacaCredentialsConfig {
-  key: string;
-  secret: string;
-}
-
 export interface ServerConfig {
   port: number;
   host: string;
@@ -71,20 +68,49 @@ export interface ServerConfig {
 }
 
 export function loadDailyCost(env: Env = Bun.env): number {
-  return numberEnv("DAILY_COST", 150, env, { min: 0 });
+  if (env !== Bun.env) return numberEnv("DAILY_COST", 150, env, { min: 0 });
+  const config = loadConfig();
+  return numberEnv("DAILY_COST", config.dailyCost, env, { min: 0 });
+}
+
+export function loadDividendTargetDaily(env: Env = Bun.env): number {
+  if (env !== Bun.env) return numberEnv("DIVIDEND_TARGET_DAILY", 280, env, { min: 0 });
+  const config = loadConfig();
+  return numberEnv("DIVIDEND_TARGET_DAILY", config.dividendTargetDaily, env, { min: 0 });
 }
 
 export function loadRobinhoodCredentials(env: Env = Bun.env): RobinhoodCredentialsConfig {
-  return {
-    username: requiredEnv("RH_USERNAME", env),
-    password: requiredEnv("RH_PASSWORD", env),
-    mfaCode: optionalEnv("RH_MFA_CODE", env) ?? optionalEnv("RH_MFA", env),
-  };
+  if (env !== Bun.env) {
+    return {
+      username: requiredEnv("RH_USERNAME", env),
+      password: requiredEnv("RH_PASSWORD", env),
+      mfaCode: optionalEnv("RH_MFA_CODE", env) ?? optionalEnv("RH_MFA", env),
+    };
+  }
+  const optional = loadOptionalRobinhoodCredentials(env);
+  if (!optional) throw new ConfigError("Robinhood credentials are not configured");
+  return optional;
 }
 
 export function loadOptionalRobinhoodCredentials(env: Env = Bun.env): RobinhoodCredentialsConfig | null {
-  const username = optionalEnv("RH_USERNAME", env);
-  const password = optionalEnv("RH_PASSWORD", env);
+  if (env !== Bun.env) {
+    const username = optionalEnv("RH_USERNAME", env);
+    const password = optionalEnv("RH_PASSWORD", env);
+    if (!username && !password) return null;
+    if (!username || !password) {
+      throw new ConfigError("Set both RH_USERNAME and RH_PASSWORD, or neither");
+    }
+    return {
+      username,
+      password,
+      mfaCode: optionalEnv("RH_MFA_CODE", env) ?? optionalEnv("RH_MFA", env),
+    };
+  }
+
+  migrateEnvCredentialsOnce(env);
+  const config = loadConfig();
+  const username = optionalEnv("RH_USERNAME", env) ?? config.robinhood?.username;
+  const password = optionalEnv("RH_PASSWORD", env) ?? config.robinhood?.password;
   if (!username && !password) return null;
   if (!username || !password) {
     throw new ConfigError("Set both RH_USERNAME and RH_PASSWORD, or neither");
@@ -96,24 +122,62 @@ export function loadOptionalRobinhoodCredentials(env: Env = Bun.env): RobinhoodC
   };
 }
 
-export function loadAlpacaCredentials(env: Env = Bun.env): AlpacaCredentialsConfig {
-  return {
-    key: requiredEnv("ALPACA_API_KEY", env),
-    secret: requiredEnv("ALPACA_API_SECRET", env),
-  };
+// Per-process nonce: token changes on every restart so it can't be pre-computed
+const PROCESS_NONCE = randomBytes(16).toString("hex");
+
+function deriveActionToken(password: string): string {
+  return createHash("sha256").update(`watcher-action:${password}:${PROCESS_NONCE}`).digest("hex").slice(0, 16);
 }
 
 export function loadServerConfig(env: Env = Bun.env): ServerConfig {
+  if (env !== Bun.env) {
+    const password = optionalEnv("DASHBOARD_PASSWORD", env) ?? "";
+    return {
+      port: numberEnv("PORT", 4242, env, { integer: true, min: 1 }),
+      host: optionalEnv("HOST", env) ?? "127.0.0.1",
+      refreshMs: numberEnv("REFRESH_MS", 48 * 60 * 60 * 1000, env, { integer: true, min: 1_000 }),
+      refreshTimeoutMs: numberEnv("REFRESH_TIMEOUT_MS", 90_000, env, { integer: true, min: 5_000 }),
+      access: {
+        user: optionalEnv("DASHBOARD_USER", env) ?? "watcher",
+        password,
+        allowUnauthRemote: booleanEnv("ALLOW_UNAUTH_REMOTE", false, env),
+        stateChangeHeader: deriveActionToken(password),
+      },
+    };
+  }
+
+  const config = loadConfig();
+  const password = optionalEnv("DASHBOARD_PASSWORD", env) ?? config.access.password;
   return {
-    port: numberEnv("PORT", 4242, env, { integer: true, min: 1 }),
-    host: optionalEnv("HOST", env) ?? "127.0.0.1",
-    refreshMs: numberEnv("REFRESH_MS", 48 * 60 * 60 * 1000, env, { integer: true, min: 1_000 }),
-    refreshTimeoutMs: numberEnv("REFRESH_TIMEOUT_MS", 90_000, env, { integer: true, min: 5_000 }),
+    port: numberEnv("PORT", config.server.port, env, { integer: true, min: 1 }),
+    host: optionalEnv("HOST", env) ?? config.server.host,
+    refreshMs: numberEnv("REFRESH_MS", config.server.refreshMs, env, { integer: true, min: 1_000 }),
+    refreshTimeoutMs: numberEnv("REFRESH_TIMEOUT_MS", config.server.refreshTimeoutMs, env, { integer: true, min: 5_000 }),
     access: {
-      user: optionalEnv("DASHBOARD_USER", env) ?? "watcher",
-      password: optionalEnv("DASHBOARD_PASSWORD", env) ?? "",
-      allowUnauthRemote: booleanEnv("ALLOW_UNAUTH_REMOTE", false, env),
-      stateChangeHeader: "1",
+      user: optionalEnv("DASHBOARD_USER", env) ?? config.access.user,
+      password,
+      allowUnauthRemote: booleanEnv("ALLOW_UNAUTH_REMOTE", config.access.allowUnauthRemote, env),
+      stateChangeHeader: deriveActionToken(password),
     },
   };
+}
+
+function migrateEnvCredentialsOnce(env: Env): void {
+  const config = loadConfig();
+  if (config.robinhood?.username && config.robinhood.password) return;
+  const username = optionalEnv("RH_USERNAME", env);
+  const password = optionalEnv("RH_PASSWORD", env);
+  if (!username || !password) return;
+  try {
+    saveConfig({
+      robinhood: {
+        username,
+        password,
+        mfaCode: optionalEnv("RH_MFA_CODE", env) ?? optionalEnv("RH_MFA", env),
+      },
+    });
+    console.log("Migrated Robinhood credentials from environment to ~/.watcher/config.json");
+  } catch {
+    // Environment credentials remain valid when config migration is not writable.
+  }
 }

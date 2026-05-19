@@ -30,13 +30,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const MAX_RETRY_DELAY_MS = 30_000;
+
 function retryDelay(response: Response, fallbackMs: number, attempt: number): number {
   const retryAfter = response.headers.get("retry-after");
   if (retryAfter) {
     const seconds = Number(retryAfter);
-    if (Number.isFinite(seconds)) return seconds * 1000;
+    if (Number.isFinite(seconds)) return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS);
   }
-  return fallbackMs * Math.pow(2, attempt);
+  return Math.min(fallbackMs * Math.pow(2, attempt), MAX_RETRY_DELAY_MS);
 }
 
 export async function fetchWithRetry(

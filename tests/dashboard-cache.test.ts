@@ -18,7 +18,8 @@ function sampleData(): DashboardData {
     fetchedAt: "2026-04-27T12:00:00.000Z",
     holdings: [],
     dividends: [],
-    spending: null,
+    marketCalendar: [],
+
     summary: {
       totalCost: 0,
       totalValue: 0,
@@ -32,6 +33,13 @@ function sampleData(): DashboardData {
       trailing30dIncome: 0,
       annualizedTrailingIncome: 0,
       forwardProjectedAnnualIncome: 0,
+      dividendTargetDaily: 280,
+      dividendTargetAnnual: 102_200,
+      forwardProjectedDailyIncome: 0,
+      dividendGoalProgressPct: 0,
+      dividendIncomeGapDaily: 280,
+      dividendIncomeGapAnnual: 102_200,
+      capitalRequiredAtCurrentYield: null,
       annualYieldOnCost: 0,
       lifetimeDividendYieldOnCost: 0,
       dailyCost: 150,
@@ -45,6 +53,7 @@ function sampleData(): DashboardData {
         stale: false,
       },
     },
+    guardrails: [],
   };
 }
 

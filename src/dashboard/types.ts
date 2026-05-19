@@ -9,6 +9,11 @@ export interface Holding {
   pnl: number;
   pnlPct: number;
   divsEarned: number;
+  forwardAnnualIncome: number;
+  forwardDailyIncome: number;
+  forwardYieldOnCost: number;
+  forwardYieldOnValue: number;
+  forwardIncomePct: number;
   heldSince: string;
   type?: string;
   source?: "stock" | "crypto";
@@ -23,20 +28,6 @@ export interface DividendEntry {
   state: string;
 }
 
-export interface CardTxEntry {
-  date: string;
-  amount: number;
-  direction: "debit" | "credit";
-  state: string;
-}
-
-export interface SpendingData {
-  uninvestedCash: number;
-  withdrawableCash: number;
-  buyingPower: number;
-  spent30d: number;
-  transactions: CardTxEntry[];
-}
 
 export type SourceState = "fresh" | "stale" | "unavailable";
 
@@ -69,6 +60,13 @@ export interface DashboardSummary {
   trailing30dIncome: number;
   annualizedTrailingIncome: number;
   forwardProjectedAnnualIncome: number;
+  dividendTargetDaily: number;
+  dividendTargetAnnual: number;
+  forwardProjectedDailyIncome: number;
+  dividendGoalProgressPct: number;
+  dividendIncomeGapDaily: number;
+  dividendIncomeGapAnnual: number;
+  capitalRequiredAtCurrentYield: number | null;
   annualYieldOnCost: number;
   lifetimeDividendYieldOnCost: number;
   dailyCost: number;
@@ -76,13 +74,33 @@ export interface DashboardSummary {
   reconciliation: DashboardReconciliation;
 }
 
+export type GuardrailSeverity = "info" | "warning" | "danger";
+
+export interface PortfolioGuardrail {
+  id: string;
+  severity: GuardrailSeverity;
+  title: string;
+  detail: string;
+  metric?: number;
+  threshold?: number;
+  symbols?: string[];
+}
+
+export interface MarketCalendarEvent {
+  date: string;
+  label: string;
+  type: string;
+  days_away: number;
+}
+
 export interface DashboardData {
   fetchedAt: string;
   holdings: Holding[];
   dividends: DividendEntry[];
-  spending: SpendingData | null;
+  marketCalendar: MarketCalendarEvent[];
   sourceErrors?: Record<string, string>;
   sourceWarnings?: Record<string, string>;
   sourceStatus?: Record<string, SourceStatus>;
   summary: DashboardSummary;
+  guardrails: PortfolioGuardrail[];
 }

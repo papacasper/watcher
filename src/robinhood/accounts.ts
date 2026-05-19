@@ -63,26 +63,7 @@ export interface DividendRecord {
 }
 
 const BASE_URL = "https://api.robinhood.com";
-const MINERVA_URL = "https://minerva.robinhood.com";
 const BONFIRE_URL = "https://bonfire.robinhood.com";
-
-export type CardTransactionType = "pending" | "settled";
-
-export interface CardTransaction {
-  id: string;
-  type: CardTransactionType;
-  direction: "debit" | "credit";
-  amount: string;
-  currency_code: string;
-  description: string;
-  merchant: {
-    name: string;
-    category: string;
-  } | null;
-  created_at: string;
-  updated_at: string;
-  state: string;
-}
 
 export interface UnifiedTransfer {
   id: string;
@@ -190,30 +171,6 @@ export async function getAccountInfo(): Promise<AccountProfile | null> {
   }
 }
 
-export interface SpendingAccountBalance {
-  portfolio_cash: string;
-  buying_power: string;
-  cash_available_for_withdrawal: string;
-  cash: string;
-  cash_held_for_orders: string;
-  unsettled_funds: string;
-}
-
-export async function getSpendingAccountBalance(): Promise<SpendingAccountBalance | null> {
-  const resp = await fetchWithRetry(`${BASE_URL}/accounts/`, { headers: getHeaders() }, { retries: 2, label: "Robinhood spending balance" });
-  if (!resp.ok) throw new Error(`Accounts fetch failed: ${resp.status}`);
-  const data = await resp.json() as { results?: SpendingAccountBalance[] };
-  return data.results?.[0] ?? null;
-}
-
-export async function getCardTransactions(
-  cardType?: CardTransactionType
-): Promise<CardTransaction[]> {
-  const url = new URL(`${MINERVA_URL}/history/transactions/`);
-  if (cardType) url.searchParams.set("type", cardType);
-  return paginationRequest<CardTransaction[]>(url.toString());
-}
-
 export async function getUnifiedTransfers(): Promise<UnifiedTransfer[]> {
   return paginationRequest<UnifiedTransfer[]>(
     `${BONFIRE_URL}/paymenthub/unified_transfers/`
@@ -259,7 +216,5 @@ export default {
   getAllPositions,
   getAccountInfo,
   getPortfolioSummary,
-  getSpendingAccountBalance,
-  getCardTransactions,
   getUnifiedTransfers,
 };

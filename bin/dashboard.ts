@@ -5,7 +5,7 @@ import { fetchDashboardData } from "../src/dashboard/data.js";
 
 const chalk = new Chalk({ level: 3 });
 const data = await fetchDashboardData();
-const { holdings, dividends, spending, summary } = data;
+const { holdings, dividends, summary } = data;
 
 // Only historical dividends for the CLI table (exclude projected/announced)
 const historicDivsBySymbol = new Map<string, typeof dividends>();
@@ -26,7 +26,7 @@ console.log(chalk.bold.white("  PORTFOLIO DASHBOARD") + chalk.dim(`  —  ${new 
 console.log(rule("─"));
 console.log();
 console.log(header("TABLE OF CONTENTS"));
-console.log(chalk.dim("  1. Holdings") + "   2. Dividends (since acquisition)   3. Spending Account   4. Summary");
+console.log(chalk.dim("  1. Holdings") + "   2. Dividends (since acquisition)   3. Summary");
 console.log();
 console.log(rule("─"));
 
@@ -95,42 +95,6 @@ console.log(divTable.toString());
 console.log();
 console.log(rule("─"));
 
-// ── 3. Spending Account ───────────────────────────────────────────────────────
-console.log();
-console.log(header("3. SPENDING ACCOUNT"));
-console.log();
-
-if (spending) {
-  console.log(col("Portfolio Cash:", chalk.white(`$${spending.uninvestedCash.toFixed(2)}`)));
-  console.log(col("Available for Withdrawal:", chalk.white(`$${spending.withdrawableCash.toFixed(2)}`)));
-  console.log(col("Buying Power:", chalk.white(`$${spending.buyingPower.toFixed(2)}`)));
-  console.log();
-
-  const recent = spending.transactions.slice(0, 10);
-  if (recent.length > 0) {
-    const spendTable = new Table({
-      head: ["Date", "Amount", "Direction", "State"].map(h => chalk.bold(h)),
-      colWidths: [13, 13, 12, 11],
-      style: { head: [], border: ["dim"] },
-    });
-    for (const t of recent) {
-      const dirColor = t.direction === "debit" ? chalk.red : chalk.green;
-      spendTable.push([
-        t.date,
-        dirColor(`${t.direction === "debit" ? "-" : "+"}$${t.amount.toFixed(2)}`),
-        chalk.dim(t.direction),
-        t.state,
-      ]);
-    }
-    console.log(spendTable.toString());
-    console.log();
-    console.log(col("30d Card Spending:", chalk.red(`$${spending.spent30d.toFixed(2)}`)));
-  }
-} else {
-  console.log(chalk.dim("  Spending account data unavailable."));
-}
-
-console.log();
 console.log(rule("─"));
 
 // ── 4. Summary ────────────────────────────────────────────────────────────────
@@ -144,6 +108,7 @@ console.log(col("Portfolio Value:", chalk.white(`$${summary.totalValue.toFixed(2
 console.log(col("Unrealized P&L:", pnlColor(`${summary.pnl >= 0 ? "+" : ""}$${summary.pnl.toFixed(2)}  (${summary.pnlPct >= 0 ? "+" : ""}${summary.pnlPct.toFixed(2)}%)`)));
 console.log(col("Dividends Earned:", chalk.green(`$${summary.divsEarned.toFixed(2)}`)));
 console.log(col("Last 30d Income:", chalk.green(`$${summary.last30dIncome.toFixed(2)}`)));
+console.log(col("Daily Dividend Target:", chalk.dim(`$${summary.dividendTargetDaily.toFixed(2)}`)));
 console.log(col("Daily Cost of Living:", chalk.dim(`$${summary.dailyCost.toFixed(2)}`)));
 console.log();
 console.log(`  ${chalk.bold.white("DAYS OF FREEDOM:")}  ${chalk.bold.cyan(String(summary.daysOfFreedom))} days`);

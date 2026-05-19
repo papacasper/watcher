@@ -1,86 +1,79 @@
 # Watcher
 
-Watcher is a self-hosted Bun + Elysia portfolio dashboard for Robinhood holdings,
-dividend income, spending data, lightweight market alerts, and account-value
-reconciliation. The web UI is a React single-page app served by the Bun server.
+Watcher is a self-hosted Robinhood dividend-goal dashboard. It runs on your
+machine, stores credentials locally, and shows how close the portfolio is to a
+daily dividend income target.
 
-The dashboard can include Robinhood account-level adjustments and hidden crypto
-value in the headline net account value while keeping the visible holdings table
-focused on stock positions.
+## Download And Run
+
+Download the binary for your OS, run it, then open:
+
+```text
+http://localhost:4242
+```
+
+The first screen asks for your Robinhood username and password, an optional MFA
+code, an optional dashboard password, and dividend goal settings. If Robinhood
+requires push approval, Watcher shows that state while you approve the sign-in
+in the Robinhood app.
+
+Credentials are stored only on the machine running Watcher at
+`~/.watcher/config.json` with `0600` file permissions. Robinhood session tokens
+are stored under `~/.tokens` by default.
+
+## Run From Source
+
+```bash
+bun install
+bun run server
+```
+
+Then open `http://localhost:4242` and complete setup in the browser.
+
+An `.env` file is no longer required. You can still copy `.env.example` for
+optional host, port, refresh, cache, or legacy credential overrides.
 
 ## Features
 
-- Portfolio overview with gross holdings value, net liquidation value, cash,
-  profit/loss, total return, and allocation.
+- Forward projected annual and daily dividend income.
+- Daily dividend target progress, income gap, and required capital estimate.
+- Portfolio value, allocation, total return, cash adjustment, and reconciliation.
 - Dividend calendar with paid, reinvested, pending, announced, and projected
   entries.
-- Income metrics for trailing 30-day income, annualized trailing income,
-  forward projected annual income, yield on cost, and days of freedom.
-- Spending summary from Robinhood spending account data when available.
-- Robinhood crypto reconciliation without showing crypto positions in the
-  holdings table.
-- Source status reporting for fresh, stale, and unavailable upstream data.
-- Stale cache fallback when non-critical sources fail.
-- Basic auth, conservative security headers, and hardened local cache
-  permissions.
-
-## Requirements
-
-- Bun
-- Robinhood credentials
-- Alpaca API credentials
-
-Copy the example environment file and fill in your local values:
-
-```bash
-cp .env.example .env
-chmod 600 .env
-```
-
-Important settings:
-
-- `RH_USERNAME` and `RH_PASSWORD`: Robinhood login.
-- `ALPACA_API_KEY` and `ALPACA_API_SECRET`: Alpaca market data credentials.
-- `DAILY_COST`: daily spending baseline used for income metrics.
-- `HOST` and `PORT`: dashboard bind address.
-- `DASHBOARD_PASSWORD`: required when binding to a non-loopback address unless
-  `ALLOW_UNAUTH_REMOTE=true` is explicitly set.
+- Robinhood spending context when available.
+- Crypto value reconciliation without treating crypto as dividend holdings.
+- Deterministic portfolio guardrails for data integrity, concentration, high
+  yield, and complex product flags.
+- Source freshness reporting and stale-cache fallback for non-critical sources.
 
 ## Commands
 
 ```bash
-bun install
-bun run build
-bun run test
-bun run typecheck
-bun run verify
-bun run audit:deps
-bun run server
-bun run dashboard
-bun run audit
-bun run watch
+bun run build              # bundle frontend to dist/bundle.js
+bun run test               # run Bun tests
+bun run typecheck          # TypeScript check
+bun run verify             # build + typecheck + tests
+bun run verify:binary      # compile binary and smoke-test /api/setup
+bun run build:binary       # compile local dist/watcher binary
+bun run release            # build local release artifacts
+bun run server             # run dashboard server
+bun run dashboard          # terminal dividend dashboard report
 ```
 
 ## Deployment
 
 An example systemd user service is available at
-`docs/watcher.service.example`. It lets systemd run the Bun server directly and
-own restart behavior.
+`docs/watcher.service.example`.
 
-For Tailscale or LAN access, bind `HOST` to the Tailscale/LAN IP and set
-`DASHBOARD_PASSWORD`.
+For Tailscale or LAN access, bind `HOST` to the Tailscale/LAN IP and set a
+dashboard password in setup or `.env`. Non-loopback binds without a password are
+rejected unless `ALLOW_UNAUTH_REMOTE=true` is explicitly set.
 
 ## Security Notes
 
-- Do not commit `.env`.
-- The server defaults to `127.0.0.1`.
-- Non-loopback binds require authentication by default.
-- Dashboard and Robinhood token caches are written with restrictive
-  permissions.
+- Watcher is single-user software; run one copy per Robinhood account.
+- Robinhood credentials stay local in `~/.watcher/config.json`.
+- Dashboard and token caches are written with restrictive permissions.
 - State-changing dashboard actions require POST plus the watcher action header.
-
-## Documentation
-
-- `docs/SUMMARY.md`: current architecture and operating notes.
-- `docs/UPGRADE_PLAN.md`: completed audit and hardening history.
-- `docs/watcher.service.example`: systemd user service template.
+- Watcher surfaces deterministic guardrails, but it does not recommend trades or
+  manage money.

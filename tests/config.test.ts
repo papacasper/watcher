@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ConfigError, loadOptionalRobinhoodCredentials, loadServerConfig, numberEnv } from "../src/config.js";
+import { ConfigError, loadDividendTargetDaily, loadOptionalRobinhoodCredentials, loadServerConfig, numberEnv } from "../src/config.js";
 
 describe("config parsing", () => {
   test("parses server config with defaults and booleans", () => {
@@ -13,6 +13,19 @@ describe("config parsing", () => {
 
   test("rejects invalid numeric config", () => {
     expect(() => numberEnv("PORT", 4242, { PORT: "nope" }, { integer: true })).toThrow(ConfigError);
+  });
+
+  test("loads default dividend target daily goal", () => {
+    expect(loadDividendTargetDaily({})).toBe(280);
+  });
+
+  test("loads custom dividend target daily goal", () => {
+    expect(loadDividendTargetDaily({ DIVIDEND_TARGET_DAILY: "325.50" })).toBe(325.50);
+  });
+
+  test("rejects invalid dividend target daily goal", () => {
+    expect(() => loadDividendTargetDaily({ DIVIDEND_TARGET_DAILY: "-1" })).toThrow(ConfigError);
+    expect(() => loadDividendTargetDaily({ DIVIDEND_TARGET_DAILY: "nope" })).toThrow(ConfigError);
   });
 
   test("requires Robinhood username and password together", () => {

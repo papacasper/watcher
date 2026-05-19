@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "fs";
 import type { DashboardData } from "./data.js";
 
 export function getCacheDir(): string {
@@ -15,12 +15,19 @@ function ensureCacheDir(): void {
   chmodSync(cacheDir, 0o700);
 }
 
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function loadDataCache(): DashboardData | null {
   try {
     ensureCacheDir();
     const path = getCachePath();
     if (!existsSync(path)) return null;
     chmodSync(path, 0o600);
+    const age = Date.now() - statSync(path).mtimeMs;
+    if (age > CACHE_MAX_AGE_MS) {
+      unlinkSync(path);
+      return null;
+    }
     return JSON.parse(readFileSync(path, "utf8")) as DashboardData;
   } catch {
     return null;
@@ -31,7 +38,10 @@ export function saveDataCache(data: DashboardData): void {
   try {
     ensureCacheDir();
     const path = getCachePath();
-    writeFileSync(path, JSON.stringify(data), { mode: 0o600 });
+    const tmp = `${path}.tmp`;
+    writeFileSync(tmp, JSON.stringify(data), { mode: 0o600 });
+    chmodSync(tmp, 0o600);
+    renameSync(tmp, path);
     chmodSync(path, 0o600);
   } catch {
     // non-fatal
